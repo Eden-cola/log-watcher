@@ -14,7 +14,7 @@ class WebSocketServer extends Events {
     this.wss = new WebSocket.Server({port});
     this.wss.on('connection', (ws) => {
       ws.on('message', (message) => {
-        console.log('received: %s', message);
+        ws.filter = message;
       });
       ws.on('error', (err)=>{
         console.log(err);
@@ -25,11 +25,16 @@ class WebSocketServer extends Events {
   }
 
   send (data) {
-    this.sendRow(JSON.stringify(data));
+    const apiname = data.filename.split('.')
+      .shift().split('-').join('/');
+    this.sendRow(JSON.stringify(data), apiname);
   }
 
-  sendRow (message) {
+  sendRow (message, apiname) {
     this.wsList = _.filter(this.wsList, function (ws) {
+      if (ws.filter != '')
+        if (apiname.indexOf(ws.filter) < 0)
+          return true;
       try {
         ws.send(message);
       } catch (e) {
