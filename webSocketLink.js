@@ -46,5 +46,5 @@ class WebSocketLink extends Events {
   }
 }
 
-module.exports = WebSocketServer;
+module.exports = WebSocketLink;
 
