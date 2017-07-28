@@ -12,8 +12,9 @@ const Events = require('events');
 
 class LogServer extends Events {
   constructor (port) {
-    this.port = port;
     super();
+    this.port = port;
+    this.app = null;
     console.log('创建logServer');
     this.server = null;
     this.initServer();
@@ -25,8 +26,10 @@ class LogServer extends Events {
       this.emit('update', ctx.request.query);
       ctx.body = 'success'
     });
-    this.server = http.createServer(app).listen(this.port);
+    app.listen(this.port);
+    this.app = app;
   }
+}
 
 module.exports = LogServer;
 
