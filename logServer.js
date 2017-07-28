@@ -2,6 +2,7 @@
 
 const http = require('http');
 const Koa = require('koa');
+const bodyParser = require('koa-bodyparser');
 const _ = require('lodash');
 const Events = require('events');
 
@@ -22,8 +23,10 @@ class LogServer extends Events {
 
   initServer () {
     const app = new Koa();
+    app.use(bodyParser());
     app.use((ctx) => {
-      this.emit('update', ctx.request.query);
+      //console.log(ctx.request.body);
+      this.emit('update', ctx.request.body);
       ctx.body = 'success'
     });
     app.listen(this.port);
