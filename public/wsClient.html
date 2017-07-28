@@ -1,0 +1,217 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<title>API助手-迪巴酱</title>
+<style type="text/css" media="screen">
+.jstValue {
+    white-space: pre-wrap;
+    font-size: 16px;
+    font-weight: 400;
+    font-family: "Lucida Console", Monaco, monospace;
+}
+.jstComma {
+    white-space: pre-wrap;
+}
+.jstProperty {
+    color: #666;
+    word-wrap: break-word;
+}
+.jstBracket {
+    white-space: pre-wrap;;
+}
+.jstBool {
+    color: #2525CC;
+}
+.jstNum {
+    color: #D036D0;
+}
+.jstNull {
+    color: gray;
+}
+.jstStr {
+    color: #2DB669;
+}
+.jstFold:after {
+    content: ' -';
+    cursor: pointer;
+}
+.jstExpand {
+    white-space: normal;
+}
+.jstExpand:after {
+    content: ' +';
+    cursor: pointer;
+}
+.jstFolded {
+    white-space: normal !important;
+}
+.jstHiddenBlock {
+    display: none;
+}
+    
+</style>
+<style type="text/css" media="screen">
+body {
+    margin:0;
+}
+#app {
+    display:flex;
+}
+.left {
+    width:200px;
+    height:100vh;
+    padding:5px;
+    box-sizing:border-box
+}
+.right {
+    flex-grow:1;
+    height:100vh;
+}
+.messages {
+    height:300px;
+    overflow:auto;
+}
+.logs {
+    height:100%;
+    overflow:auto;
+}
+.hideScrollBar::-webkit-scrollbar {display:none}
+.log-bg-0 {
+    background-color:#ffffcc;
+}
+.log-bg-1 {
+    background-color:#ccffff;
+}
+.log-bg-2 {
+    background-color:#ffcccc;
+}
+.log-bg-3 {
+    background-color:#ffcc99;
+}
+.log {
+    margin:5px 10px;
+    padding:10px 10px 20px 10px;
+    border:1px solid #BFBFBF;
+    /* Add box-shadow */
+    box-shadow:2px 2px 3px #aaaaaa;
+}
+</style>
+</head>
+<body>
+<div id="app">
+    <div class="left">
+        <div class="option">
+            <h3>目标接口：</h3>
+            <input type="text" v-model="input"/>
+            <button @click="send"> 更新目标接口 </button>
+        </div>
+        <div class="messages" :class="{hideScrollBar:hideScrollBar}" v-scroll="messages">
+            <pre class="message" v-text="message" v-for="message in messages">
+            </pre>
+        </div>
+        <div class="clean">
+            <button @click="messages = []"> 清空消息 </button>
+            <button @click="logs = []"> 清空logs </button>
+            <button @click="listen = !listen" v-if="listen"> 暂停监听 </button>
+            <button @click="listen = !listen" v-else> 继续监听 </button>
+        </div>
+    </div>
+    <div class="right">
+        <div class="logs" :class="{hideScrollBar:hideScrollBar}" v-scroll="logs">
+            <div class="log" :class="'log-bg-'+index%4" v-for="(log, index) in logs">
+                <p>{{log.apiname}} : {{log.time}}</p>
+                <p>请求数据:</p>
+                <div v-html="jsontree(log.request)"></div>
+                <p>返回数据:</p>
+                <div v-html="jsontree(log.response)"></div>
+            </div>
+        </div>
+    </div>
+    <div class="send" v-if="false">
+        <input type="text" v-model="input"/>
+        <button @click="send"> 发送 </button>
+    </div>
+</div>
+<script src="//cdn.bootcss.com/vue/2.4.1/vue.js"></script>
+<script src="./jsontree.js"></script>
+<script language="javascript" type="text/javascript">
+const app = new Vue({
+  el: "#app",
+  data : {
+    socket:null,
+    messages:[],
+    logs:[],
+    input:'',
+    listen:true,
+    api:'',
+    hideScrollBar:false
+  },
+  directives : {
+      scroll : function (el, binding) {
+          Vue.nextTick(()=>{
+              el.scrollTop = el.scrollHeight;
+          })
+      }
+  },
+  methods : {
+      jsontree (str) {
+          try {
+              return JSONTree.create(JSON.parse(str));
+          } catch (e) {
+              console.log(e);
+              return `<pre>${str}</pre>`;
+          }
+      },
+    onOpen () {
+      this.messages.push('数据链路建立(。-`ω´-) ');
+      this.messages.push('迪巴要开始认真工作了！ ');
+    },
+    onClose () {
+      this.messages.push('数据链路断开(≡ω≡．) ');
+      this.messages.push('趁这个机会偷个懒吧~');
+      this.messages.push('稍后迪巴会试着重建链路的');
+      setTimeout(()=>{this.createSocket()}, 10000);
+    },
+    onMessage (event) {
+      if (!this.listen)
+        return ;
+      const data = JSON.parse(event.data);
+      const apiname = data.filename.split('.').shift().split('-').join('/');
+      if (this.api != '' && apiname.indexOf(this.api) < 0)
+        return;
+      const logs =  data.logs.map((log)=>{
+        log.apiname = apiname;
+        return log;
+      });
+      this.logs = this.logs.concat(logs);
+    },
+    onError (event) {
+      //this.messages.push('数据链路收到干扰！∑(っ °Д °;)っ');
+    },
+    createSocket () {
+        try {
+            this.socket = new WebSocket('wss://log-manager.yiyiyaya.cc/ws');
+        } catch (e) {
+            this.messages.push('链路……建立不上……Σ( ° △ °|||)︴');
+            return;
+        }
+        this.socket.onopen = this.onOpen;
+        this.socket.onclose = this.onClose;
+        this.socket.onmessage = this.onMessage;
+        this.socket.onerror = this.onError;
+        this.socket = socket;
+    },
+    send () {
+      this.socket.send(this.input);
+      this.messages.push(`正在监听 ${this.input}`);
+      this.messages.push('迪巴酱！进化！☆\(￣▽￣)/☆');
+    }
+  },
+  created () {
+      this.createSocket();
+  }
+})
+</script>
+</body>
+</html>
